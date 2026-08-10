@@ -69,7 +69,7 @@ func hostExportUnavailableError() *APIError {
 	return &APIError{
 		Status:  http.StatusServiceUnavailable,
 		Message: "宿主机导出目录不可写",
-		Hint:    "请检查 Docker 挂载目录权限，并使用与容器用户一致的 ZZZ_UID/ZZZ_GID。",
+		Hint:    "请检查 DOWNLOAD_ROOT 对应的 Docker 挂载目录权限。",
 		Code:    "host_export_unavailable",
 	}
 }

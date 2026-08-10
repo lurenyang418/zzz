@@ -37,20 +37,17 @@ mkdir -p downloads
 docker run --rm -p 8080:8080 \
   -v "$PWD/downloads:/downloads" \
   -e DOWNLOAD_ROOT=/downloads \
-  --user "$(id -u):$(id -g)" \
   lurenyang/zzz:latest
 ```
 
 The “Save to host” option uses a path relative to `DOWNLOAD_ROOT`, such as `ebooks/2025`. Folder mode preserves the GitHub directory structure; ZIP mode creates a ZIP file inside the mounted directory. Submitted paths cannot escape `DOWNLOAD_ROOT`.
 
-Compose is recommended with the current host user:
+Compose is recommended after creating the host directory:
 
 ```bash
 mkdir -p downloads
-ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
-
-If Compose is started without UID/GID values, the service detects that the mounted directory is not writable and disables “Save to host” instead of waiting until download time to return `Permission denied`.
 
 ### Docker Compose
 
@@ -58,7 +55,7 @@ The repository includes [docker/docker-compose.yml](docker/docker-compose.yml):
 
 ```bash
 mkdir -p downloads
-ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 It mounts `downloads/` in the repository root and enables host exports by default. `DOWNLOAD_ROOT` is a container-side path, and the destination entered in the page must be relative to it rather than a host absolute path. Compose sets the GitHub request timeout to 180 seconds. If the server cannot reach GitHub, check Docker networking, DNS, and proxy settings first.

@@ -1,9 +1,6 @@
 services:
   zzz:
     image: lurenyang/zzz:latest
-    # Bind mounts must be writable by this UID/GID. Override both values with
-    # the host user's IDs when the default 65532 user cannot write downloads.
-    user: "${ZZZ_UID:-65532}:${ZZZ_GID:-65532}"
     ports:
       - "8080:8080"
     environment:

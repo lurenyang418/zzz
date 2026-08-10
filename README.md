@@ -37,20 +37,17 @@ mkdir -p downloads
 docker run --rm -p 8080:8080 \
   -v "$PWD/downloads:/downloads" \
   -e DOWNLOAD_ROOT=/downloads \
-  --user "$(id -u):$(id -g)" \
   lurenyang/zzz:latest
 ```
 
 页面中的“保存到主机”使用相对于 `DOWNLOAD_ROOT` 的路径，例如 `ebooks/2025`。文件夹模式保留 GitHub 原目录结构，ZIP 模式在挂载目录中生成 ZIP。页面只能提交相对路径，不能跳出 `DOWNLOAD_ROOT`。
 
-Compose 推荐先创建目录，再使用当前宿主机用户运行：
+Compose 推荐先创建目录后启动：
 
 ```bash
 mkdir -p downloads
-ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
-
-如果直接执行 Compose 而没有设置 UID/GID，服务会检测到挂载目录不可写并禁用“保存到主机”，避免下载时才出现 `Permission denied`。
 
 ### Docker Compose
 
@@ -58,7 +55,7 @@ ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up
 
 ```bash
 mkdir -p downloads
-ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 默认挂载仓库根目录下的 `downloads/`，并启用宿主机导出。`DOWNLOAD_ROOT` 是容器内路径，页面中的目标路径也必须是相对于它的路径，不能填写宿主机绝对路径。Compose 默认将 GitHub 请求超时设置为 180 秒；如服务器无法访问 GitHub，需先检查 Docker 网络、DNS 和代理配置。

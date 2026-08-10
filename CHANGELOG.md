@@ -6,6 +6,13 @@ The project follows a lightweight changelog format based on [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-10
+
+### Changed
+
+- Run the Docker runtime as root by default so host-directory exports work without UID/GID overrides.
+- Removed obsolete `ZZZ_UID`/`ZZZ_GID` configuration and updated Docker, Compose, UI, and documentation guidance.
+
 ## [0.1.1] - 2026-08-10
 
 ### Changed

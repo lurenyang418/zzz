@@ -43,7 +43,7 @@ For race detection:
 - Keep `ACCESS_TOKEN` optional but supported; never log GitHub or service tokens.
 - Preserve path traversal and symlink protections for `DOWNLOAD_ROOT` exports.
 - Keep download size, file count, concurrency, and per-IP rate limits enforced.
-- Host exports require a writable bind mount. Compose users should set `ZZZ_UID` and `ZZZ_GID` to the host user's IDs.
+- Host exports require a writable bind mount. The runtime container runs as root so mounted host directories are writable by default; keep the mount scoped to the intended download directory.
 - Logs go to stdout/stderr. Access logs include a generated request ID; avoid logging query strings because they may contain large GitHub URLs.
 
 ## Documentation and releases

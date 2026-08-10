@@ -53,7 +53,7 @@ const messages = {
     'output.summary': '输出方式',
     'output.browser': '浏览器下载',
     'output.host': '保存到主机',
-    'output.hostUnavailable': '宿主机导出不可用：DOWNLOAD_ROOT 未配置或挂载目录不可写，请检查 Docker 目录权限以及 ZZZ_UID/ZZZ_GID。',
+    'output.hostUnavailable': '宿主机导出不可用：DOWNLOAD_ROOT 未配置或挂载目录不可写，请检查 Docker 目录权限。',
     'output.hostPathLabel': '主机相对路径',
     'output.hostPathHelp': '路径相对于 Docker 的 DOWNLOAD_ROOT，例如 downloads/ebooks。',
     'output.hostPathPlaceholder': '例如 ebooks/2025',

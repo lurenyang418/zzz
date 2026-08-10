@@ -39,5 +39,4 @@ LABEL org.opencontainers.image.title="zzz" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.base.name="docker.io/library/alpine:3.24.1"
 EXPOSE 8080
-USER 65532:65532
 ENTRYPOINT ["/app/zzz"]

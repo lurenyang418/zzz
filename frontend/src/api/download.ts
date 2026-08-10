@@ -39,7 +39,7 @@ function formatApiError(data: unknown, language: Locale): string {
           : payload.code === 'github_rate_limit'
             ? 'The GitHub API rate limit has been reached. Try again later.'
             : payload.code === 'host_export_unavailable'
-              ? 'The host export directory is not writable. Check the Docker mount permissions and ZZZ_UID/ZZZ_GID settings.'
+              ? 'The host export directory is not writable. Check the Docker mount permissions.'
               : status === 401
                 ? 'The GitHub Token is invalid or expired. Check it and try again.'
                 : status === 403

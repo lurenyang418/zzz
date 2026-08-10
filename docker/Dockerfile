@@ -19,7 +19,10 @@ COPY --from=frontend-builder /app/dist ./backend/static
 WORKDIR /app/backend
 RUN cargo build --release --locked
 
-FROM alpine:3.24.1
+FROM scratch AS binary-export
+COPY --from=backend-builder /app/backend/target/release/zzz-backend /zzz
+
+FROM alpine:3.24.1 AS runtime
 RUN apk add --no-cache \
     ca-certificates \
     libgcc \
@@ -29,6 +32,3 @@ COPY --from=backend-builder /app/backend/target/release/zzz-backend /app/zzz
 EXPOSE 8080
 USER 65532:65532
 ENTRYPOINT ["/app/zzz"]
-
-FROM scratch AS binary-export
-COPY --from=backend-builder /app/backend/target/release/zzz-backend /zzz

@@ -1,0 +1,9 @@
+/backend/static/*
+!/backend/static/.gitkeep
+/frontend/dist/
+/frontend/node_modules/
+.pnpm-store/
+/backend/target/
+.DS_Store
+.env
+*.log

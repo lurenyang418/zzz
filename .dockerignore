@@ -1,0 +1,15 @@
+.git
+.github
+.codex
+.agents
+tmp
+downloads
+.env
+
+**/node_modules
+**/target
+frontend/dist
+backend/static
+
+*.log
+.DS_Store

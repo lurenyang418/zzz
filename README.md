@@ -68,7 +68,7 @@ docker compose -f docker/docker-compose.yml up -d
 - `zzz-linux-arm64`
 - `SHA256SUMS`
 
-二进制使用 Alpine/musl 构建，适合 Linux NAS；运行时需要对应系统的 musl、CA 和 OpenSSL 运行库。一般情况下推荐优先使用 Docker 镜像。
+二进制使用 Alpine/musl 构建，适合 Linux NAS；运行时需要对应系统的 musl 和 CA 证书。项目网络请求使用 Rustls，不依赖系统 OpenSSL。一般情况下推荐优先使用 Docker 镜像。
 
 ## 配置
 
@@ -127,7 +127,7 @@ cp -R frontend/dist/. backend/static/
 cargo build --manifest-path backend/Cargo.toml --release --locked
 ```
 
-生产运行时只需要 `backend/target/release/zzz-backend`，前端资源已经通过 `rust-embed` 嵌入二进制。
+生产运行时只需要 `backend/target/release/zzz-backend`，前端资源已经通过 `rust-embed` 嵌入二进制。项目使用 Rustls，不依赖系统 OpenSSL。
 
 常用检查：
 

@@ -10,7 +10,6 @@ RUN apk add --no-cache \
     build-base \
     cmake \
     nasm \
-    openssl-dev \
     perl \
     pkgconf
 WORKDIR /app
@@ -25,7 +24,6 @@ RUN apk add --no-cache \
     ca-certificates \
     libgcc \
     libstdc++ \
-    libssl3 \
     && update-ca-certificates
 WORKDIR /app
 COPY --from=backend-builder /app/backend/target/release/zzz-backend /app/zzz

@@ -68,7 +68,7 @@ When a `v*.*.*` tag is pushed, GitHub Actions creates a GitHub Release containin
 - `zzz-linux-arm64`
 - `SHA256SUMS`
 
-The binaries are built with Alpine/musl for Linux NAS systems and require the corresponding musl, CA, and OpenSSL runtime libraries. Docker images are recommended for most deployments.
+The binaries are built with Alpine/musl for Linux NAS systems and require the corresponding musl runtime and CA certificates. Network requests use Rustls and do not depend on system OpenSSL. Docker images are recommended for most deployments.
 
 ## Configuration
 
@@ -127,7 +127,7 @@ cp -R frontend/dist/. backend/static/
 cargo build --manifest-path backend/Cargo.toml --release --locked
 ```
 
-The production runtime only needs `backend/target/release/zzz-backend`; frontend assets are embedded with `rust-embed`.
+The production runtime only needs `backend/target/release/zzz-backend`; frontend assets are embedded with `rust-embed`. The project uses Rustls and does not depend on system OpenSSL.
 
 Useful checks:
 

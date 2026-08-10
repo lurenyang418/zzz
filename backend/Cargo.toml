@@ -10,9 +10,17 @@ publish = false
 anyhow = "1.0.104"
 dotenvy = "0.15.7"
 globset = "0.4.20"
-reqwest = { version = "0.13.4", features = ["json", "query", "stream"] }
+reqwest = {
+    version = "0.13.4",
+    default-features = false,
+    features = ["json", "query", "rustls", "stream"],
+}
 rust-embed = "8.12.0"
-salvo = { version = "0.95.2", features = ["full"] }
+salvo = {
+    version = "0.95.2",
+    default-features = false,
+    features = ["affix-state", "http1", "logging", "serve-static", "server"],
+}
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 thiserror = "2.0.20"

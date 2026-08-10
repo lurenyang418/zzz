@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -29,6 +30,7 @@ type server struct {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	config := loadConfig()
 	application := &server{config: config, limiter: newRequestLimiter(config)}
 	httpServer := &http.Server{
@@ -47,7 +49,7 @@ func main() {
 		defer cancel()
 		_ = httpServer.Shutdown(shutdownContext)
 	}()
-	log.Printf("zzz listening on http://%s", config.ListenAddress)
+	log.Printf("event=server_start address=%s host_export=%t access_token_required=%t", config.ListenAddress, config.DownloadRoot != "", config.AccessToken != "")
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
@@ -77,8 +79,9 @@ func (s *server) handleCapabilities(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+	hostExport := s.config.DownloadRoot != "" && isWritableDirectory(s.config.DownloadRoot)
 	writeJSON(w, http.StatusOK, map[string]bool{
-		"host_export":   s.config.DownloadRoot != "",
+		"host_export":   hostExport,
 		"auth_required": s.config.AccessToken != "",
 	})
 }
@@ -276,15 +279,55 @@ func (s *server) handleStatic(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
+var requestSequence uint64
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status int
+	bytes  int
+}
+
+func (w *loggingResponseWriter) WriteHeader(status int) {
+	if w.status != 0 {
+		return
+	}
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *loggingResponseWriter) Write(data []byte) (int, error) {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	count, err := w.ResponseWriter.Write(data)
+	w.bytes += count
+	return count, err
+}
+
+func (w *loggingResponseWriter) Flush() {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
 func loggingMiddleware(mux http.Handler, fallback http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		requestID := fmt.Sprintf("%d", atomic.AddUint64(&requestSequence, 1))
+		w.Header().Set("X-Request-ID", requestID)
+		response := &loggingResponseWriter{ResponseWriter: w}
 		if strings.HasPrefix(r.URL.Path, "/api/") {
-			mux.ServeHTTP(w, r)
+			mux.ServeHTTP(response, r)
 		} else {
-			fallback.ServeHTTP(w, r)
+			fallback.ServeHTTP(response, r)
 		}
-		log.Printf("%s %s %s", r.Method, r.URL.Path, time.Since(start).Round(time.Millisecond))
+		if response.status == 0 {
+			response.status = http.StatusOK
+		}
+		log.Printf("event=http_request request_id=%s remote=%s method=%s path=%q status=%d bytes=%d duration=%s", requestID, clientIP(r), r.Method, r.URL.Path, response.status, response.bytes, time.Since(start).Round(time.Millisecond))
 	})
 }
 

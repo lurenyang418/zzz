@@ -6,6 +6,15 @@ The project follows a lightweight changelog format based on [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-10
+
+### Changed
+
+- Added writable-directory detection for Docker host exports so the UI disables an unavailable destination before downloading.
+- Added request IDs and access logs with status, response size, client address, and duration.
+- Synchronized Docker host export instructions and clarified that `DOWNLOAD_ROOT` is a container-side path.
+- Added OCI image metadata and release build arguments for version, revision, and build time.
+
 ## [0.1.0] - 2026-08-10
 
 ### Changed

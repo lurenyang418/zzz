@@ -60,6 +60,12 @@ func TestSafeRelativePath(t *testing.T) {
 	}
 }
 
+func TestWritableDirectory(t *testing.T) {
+	if !isWritableDirectory(t.TempDir()) {
+		t.Fatal("expected temporary directory to be writable")
+	}
+}
+
 func TestErrorStatus(t *testing.T) {
 	if got := asAPIError(networkError(contextDeadlineError{})).Status; got != http.StatusGatewayTimeout {
 		t.Fatalf("expected timeout status 504, got %d", got)

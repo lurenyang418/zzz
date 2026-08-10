@@ -2,7 +2,7 @@
 
 面向 NAS 的自托管 GitHub 文件下载器。输入 GitHub 仓库、文件或目录 URL，按规则筛选内容，并通过浏览器下载或直接保存到 Docker 宿主机。
 
-[English](README.en.md) · 中文（默认）
+[English](README.en.md) · 中文
 
 ## 功能
 
@@ -34,31 +34,34 @@ docker run --rm -p 8080:8080 lurenyang/zzz:latest
 
 ```bash
 mkdir -p downloads
-sudo chown -R 65532:65532 downloads
 docker run --rm -p 8080:8080 \
   -v "$PWD/downloads:/downloads" \
   -e DOWNLOAD_ROOT=/downloads \
+  --user "$(id -u):$(id -g)" \
   lurenyang/zzz:latest
 ```
 
 页面中的“保存到主机”使用相对于 `DOWNLOAD_ROOT` 的路径，例如 `ebooks/2025`。文件夹模式保留 GitHub 原目录结构，ZIP 模式在挂载目录中生成 ZIP。页面只能提交相对路径，不能跳出 `DOWNLOAD_ROOT`。
 
-容器以非 root 用户运行。如果宿主机目录不可写，请先调整目录权限或 ACL。Compose 可以使用当前宿主机用户运行：
+Compose 推荐先创建目录，再使用当前宿主机用户运行：
 
 ```bash
 mkdir -p downloads
 ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
 ```
 
+如果直接执行 Compose 而没有设置 UID/GID，服务会检测到挂载目录不可写并禁用“保存到主机”，避免下载时才出现 `Permission denied`。
+
 ### Docker Compose
 
 仓库提供了 [docker/docker-compose.yml](docker/docker-compose.yml)：
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+mkdir -p downloads
+ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
 ```
 
-默认挂载仓库根目录下的 `downloads/`，并启用宿主机导出。Compose 默认将 GitHub 请求超时设置为 180 秒；如服务器无法访问 GitHub，需先检查 Docker 网络、DNS 和代理配置。
+默认挂载仓库根目录下的 `downloads/`，并启用宿主机导出。`DOWNLOAD_ROOT` 是容器内路径，页面中的目标路径也必须是相对于它的路径，不能填写宿主机绝对路径。Compose 默认将 GitHub 请求超时设置为 180 秒；如服务器无法访问 GitHub，需先检查 Docker 网络、DNS 和代理配置。
 
 ## 镜像与 Release
 
@@ -68,6 +71,7 @@ docker compose -f docker/docker-compose.yml up -d
 | GHCR | `ghcr.io/lurenyang418/zzz` |
 
 镜像同时提供 `linux/amd64` 和 `linux/arm64`，Docker 会根据宿主机自动选择架构。
+镜像包含 OCI 标准元数据，包括项目地址、源码地址、许可证、版本、提交 SHA 和构建时间。
 
 推送 `v*.*.*` 版本 tag 时，GitHub Actions 会创建 GitHub Release，并上传：
 
@@ -79,7 +83,7 @@ Go 后端使用 `CGO_ENABLED=0` 构建静态 Linux 二进制，前端资源会�
 
 ## 配置
 
-可以复制 [.env.example](.env.example) 作为配置参考：
+可以根据需要创建 `.env` 作为配置文件：
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
@@ -108,6 +112,16 @@ Go 后端使用 `CGO_ENABLED=0` 构建静态 Linux 二进制，前端资源会�
 ### 网络错误
 
 GitHub 请求由 zzz 后端发起。服务器或 Docker 容器无法访问 `api.github.com` 时，接口会返回 502；请求超时会返回 504。Token 只能解决权限和限流问题，不能替代服务器网络连接。
+
+### 日志
+
+服务将启动日志、HTTP 请求日志和错误日志输出到 stdout/stderr，Docker 可以直接查看：
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f zzz
+```
+
+请求日志包含请求 ID、来源地址、方法、路径、状态码、响应大小和耗时；请求 ID 会通过 `X-Request-ID` 响应头返回，便于定位问题。
 
 ## API
 

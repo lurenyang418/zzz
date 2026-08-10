@@ -34,31 +34,34 @@ Mount a host directory at `/downloads` and set `DOWNLOAD_ROOT`:
 
 ```bash
 mkdir -p downloads
-sudo chown -R 65532:65532 downloads
 docker run --rm -p 8080:8080 \
   -v "$PWD/downloads:/downloads" \
   -e DOWNLOAD_ROOT=/downloads \
+  --user "$(id -u):$(id -g)" \
   lurenyang/zzz:latest
 ```
 
 The “Save to host” option uses a path relative to `DOWNLOAD_ROOT`, such as `ebooks/2025`. Folder mode preserves the GitHub directory structure; ZIP mode creates a ZIP file inside the mounted directory. Submitted paths cannot escape `DOWNLOAD_ROOT`.
 
-The container runs as a non-root user. Adjust host directory permissions or ACL if it is not writable. Compose can run as the current host user:
+Compose is recommended with the current host user:
 
 ```bash
 mkdir -p downloads
 ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
 ```
 
+If Compose is started without UID/GID values, the service detects that the mounted directory is not writable and disables “Save to host” instead of waiting until download time to return `Permission denied`.
+
 ### Docker Compose
 
 The repository includes [docker/docker-compose.yml](docker/docker-compose.yml):
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+mkdir -p downloads
+ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
 ```
 
-It mounts `downloads/` in the repository root and enables host exports by default. Compose sets the GitHub request timeout to 180 seconds. If the server cannot reach GitHub, check Docker networking, DNS, and proxy settings first.
+It mounts `downloads/` in the repository root and enables host exports by default. `DOWNLOAD_ROOT` is a container-side path, and the destination entered in the page must be relative to it rather than a host absolute path. Compose sets the GitHub request timeout to 180 seconds. If the server cannot reach GitHub, check Docker networking, DNS, and proxy settings first.
 
 ## Images and releases
 
@@ -68,6 +71,7 @@ It mounts `downloads/` in the repository root and enables host exports by defaul
 | GHCR | `ghcr.io/lurenyang418/zzz` |
 
 Images are published for `linux/amd64` and `linux/arm64`; Docker selects the matching architecture automatically.
+Images include OCI metadata such as project/source URLs, license, version, revision, and build time.
 
 When a `v*.*.*` tag is pushed, GitHub Actions creates a GitHub Release containing:
 
@@ -79,7 +83,7 @@ The Go backend is built as a static `CGO_ENABLED=0` Linux binary with frontend a
 
 ## Configuration
 
-Copy [.env.example](.env.example) as a configuration reference:
+Create a `.env` file if you need to provide configuration values:
 
 | Variable | Required | Description |
 | --- | --- | --- |
@@ -108,6 +112,16 @@ When `ACCESS_TOKEN` is configured, the page asks for the service access token an
 ### Network errors
 
 GitHub requests are made by the zzz backend. If the server or Docker container cannot reach `api.github.com`, the API returns 502; request timeouts return 504. A Token can solve permissions and rate limits, but cannot replace network connectivity.
+
+### Logs
+
+The service writes startup, HTTP request, and error logs to stdout/stderr. With Docker Compose:
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f zzz
+```
+
+Request logs include a request ID, source address, method, path, status code, response size, and duration. The request ID is also returned in the `X-Request-ID` response header.
 
 ## API
 

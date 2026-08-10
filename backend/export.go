@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,10 +27,13 @@ type exportResult struct {
 
 func exportToHost(ctx context.Context, files []FileEntry, client *GitHubClient, config Config, request exportRequest, repoName string) (exportResult, error) {
 	if config.DownloadRoot == "" {
-		return exportResult{}, &APIError{Status: 503, Message: "DOWNLOAD_ROOT is not configured"}
+		return exportResult{}, hostExportUnavailableError()
 	}
 	if err := os.MkdirAll(config.DownloadRoot, 0o755); err != nil {
-		return exportResult{}, &APIError{Status: 500, Message: "could not create DOWNLOAD_ROOT", Cause: err}
+		return exportResult{}, &APIError{Status: http.StatusServiceUnavailable, Message: "宿主机导出目录不可用", Hint: "请检查 DOWNLOAD_ROOT 对应的 Docker 挂载目录权限。", Code: "host_export_unavailable", Cause: err}
+	}
+	if !isWritableDirectory(config.DownloadRoot) {
+		return exportResult{}, hostExportUnavailableError()
 	}
 	root, err := filepath.Abs(config.DownloadRoot)
 	if err != nil {
@@ -59,6 +63,31 @@ func exportToHost(ctx context.Context, files []FileEntry, client *GitHubClient, 
 	default:
 		return exportResult{}, invalidError("unsupported export format: " + format)
 	}
+}
+
+func hostExportUnavailableError() *APIError {
+	return &APIError{
+		Status:  http.StatusServiceUnavailable,
+		Message: "宿主机导出目录不可写",
+		Hint:    "请检查 Docker 挂载目录权限，并使用与容器用户一致的 ZZZ_UID/ZZZ_GID。",
+		Code:    "host_export_unavailable",
+	}
+}
+
+func isWritableDirectory(directory string) bool {
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		return false
+	}
+	testFile, err := os.CreateTemp(directory, ".zzz-write-test-*")
+	if err != nil {
+		return false
+	}
+	testPath := testFile.Name()
+	if err := testFile.Close(); err != nil {
+		_ = os.Remove(testPath)
+		return false
+	}
+	return os.Remove(testPath) == nil
 }
 
 func exportFolder(ctx context.Context, root, destination string, files []FileEntry, client *GitHubClient, config Config) (exportResult, error) {

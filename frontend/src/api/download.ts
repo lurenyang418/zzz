@@ -38,21 +38,23 @@ function formatApiError(data: unknown, language: Locale): string {
           ? 'The zzz request rate limit has been reached. Please wait and try again.'
           : payload.code === 'github_rate_limit'
             ? 'The GitHub API rate limit has been reached. Try again later.'
-      : status === 401
-        ? 'The GitHub Token is invalid or expired. Check it and try again.'
-        : status === 403
-          ? 'GitHub rejected the request. The API may be rate-limited or the repository may be inaccessible.'
-          : status === 502
-              ? 'The zzz server could not reach GitHub. Check the server network, DNS, and proxy settings.'
-              : status === 504
-                ? 'The GitHub request timed out. Try a narrower directory or increase GITHUB_TIMEOUT_SECS.'
-                : status === 404
-                  ? 'The repository, branch, path, or selected files were not found.'
-                  : status === 413
-                    ? 'The selected content exceeds a server limit. Choose fewer or smaller files.'
-                    : typeof payload.hint === 'string'
-                      ? payload.hint
-                      : '';
+            : payload.code === 'host_export_unavailable'
+              ? 'The host export directory is not writable. Check the Docker mount permissions and ZZZ_UID/ZZZ_GID settings.'
+              : status === 401
+                ? 'The GitHub Token is invalid or expired. Check it and try again.'
+                : status === 403
+                  ? 'GitHub rejected the request. The API may be rate-limited or the repository may be inaccessible.'
+                  : status === 502
+                    ? 'The zzz server could not reach GitHub. Check the server network, DNS, and proxy settings.'
+                    : status === 504
+                      ? 'The GitHub request timed out. Try a narrower directory or increase GITHUB_TIMEOUT_SECS.'
+                      : status === 404
+                        ? 'The repository, branch, path, or selected files were not found.'
+                        : status === 413
+                          ? 'The selected content exceeds a server limit. Choose fewer or smaller files.'
+                          : typeof payload.hint === 'string'
+                            ? payload.hint
+                            : '';
     return hint ? `${message}\n${hint}` : message;
   }
   return typeof payload.hint === 'string' ? `${message}\n${payload.hint}` : message;

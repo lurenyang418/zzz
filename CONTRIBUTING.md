@@ -15,19 +15,19 @@ Install the frontend dependencies and run the frontend and backend separately:
 ```bash
 pnpm --dir frontend install --frozen-lockfile
 pnpm --dir frontend dev
-cargo run --manifest-path backend/Cargo.toml
+(cd backend && go run .)
 ```
 
 Before submitting changes, run:
 
 ```bash
 pnpm --dir frontend build
-cargo fmt --manifest-path backend/Cargo.toml --check
-cargo clippy --manifest-path backend/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --manifest-path backend/Cargo.toml --locked
+(cd backend && gofmt -w *.go && go test ./...)
 ```
 
 If Docker is available, also validate the Compose configuration and build the image. Changes to frontend source must be included in the embedded release build.
+
+Dependabot monitors GitHub Actions, frontend npm packages, Go modules, and Docker base images. Patch and minor Dependabot updates may be merged automatically after the required checks pass; major updates remain manual.
 
 ## Pull requests
 

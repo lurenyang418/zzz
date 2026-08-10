@@ -7,13 +7,14 @@
 ## 功能
 
 - 支持 GitHub 仓库、文件和目录 URL
+- 使用 Git Trees API 读取递归目录，超大树被 GitHub 截断时提示缩小范围
 - 支持忽略规则、仅包含规则和目录树勾选
 - 支持目录搜索、全选、展开/折叠和半选状态
 - 下载前显示文件数量和预计大小
 - 支持浏览器下载 ZIP，或保存为宿主机文件夹/ZIP
 - GitHub Token 可按需申请、填写，并保存在当前浏览器
 - 支持中英文界面和亮暗主题
-- 前端资源在 Rust 构建阶段嵌入最终二进制
+- 前端资源在 Go 构建阶段嵌入最终二进制
 - Docker 镜像支持 `linux/amd64` 和 `linux/arm64`
 
 ## 快速开始
@@ -33,15 +34,21 @@ docker run --rm -p 8080:8080 lurenyang/zzz:latest
 
 ```bash
 mkdir -p downloads
+sudo chown -R 65532:65532 downloads
 docker run --rm -p 8080:8080 \
   -v "$PWD/downloads:/downloads" \
   -e DOWNLOAD_ROOT=/downloads \
   lurenyang/zzz:latest
 ```
 
-页面中的“保存到主机”使用相对于 `DOWNLOAD_ROOT` 的路径，例如 `ebooks/2025`。文件夹模式保留 GitHub 原目录结构，ZIP 模式在挂载目录中生成 ZIP。为保证安全，页面只能提交相对路径，不能跳出 `DOWNLOAD_ROOT`。
+页面中的“保存到主机”使用相对于 `DOWNLOAD_ROOT` 的路径，例如 `ebooks/2025`。文件夹模式保留 GitHub 原目录结构，ZIP 模式在挂载目录中生成 ZIP。页面只能提交相对路径，不能跳出 `DOWNLOAD_ROOT`。
 
-容器以非 root 用户运行。如果宿主机目录不可写，请先调整目录权限或 ACL。
+容器以非 root 用户运行。如果宿主机目录不可写，请先调整目录权限或 ACL。Compose 可以使用当前宿主机用户运行：
+
+```bash
+mkdir -p downloads
+ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
+```
 
 ### Docker Compose
 
@@ -51,7 +58,7 @@ docker run --rm -p 8080:8080 \
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-默认挂载仓库根目录下的 `downloads/`，并启用宿主机导出。
+默认挂载仓库根目录下的 `downloads/`，并启用宿主机导出。Compose 默认将 GitHub 请求超时设置为 180 秒；如服务器无法访问 GitHub，需先检查 Docker 网络、DNS 和代理配置。
 
 ## 镜像与 Release
 
@@ -68,7 +75,7 @@ docker compose -f docker/docker-compose.yml up -d
 - `zzz-linux-arm64`
 - `SHA256SUMS`
 
-二进制使用 Alpine/musl 构建，适合 Linux NAS；运行时需要对应系统的 musl 和 CA 证书。项目网络请求使用 Rustls，不依赖系统 OpenSSL。一般情况下推荐优先使用 Docker 镜像。
+Go 后端使用 `CGO_ENABLED=0` 构建静态 Linux 二进制，前端资源会嵌入其中。运行时不依赖系统 OpenSSL、libgcc 或 libstdc++。
 
 ## 配置
 
@@ -76,19 +83,31 @@ docker compose -f docker/docker-compose.yml up -d
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
+| `ACCESS_TOKEN` | 否 | zzz 服务访问密钥；配置后除健康检查和能力查询外的 API 都需要它 |
 | `GITHUB_TOKEN` | 否 | 服务端默认 GitHub Token |
 | `DOWNLOAD_ROOT` | 否 | 宿主机导出的容器内根目录；未配置时页面禁用“保存到主机” |
-| `GITHUB_TIMEOUT_SECS` | 否 | GitHub 请求超时时间，默认 60 秒 |
-| `MAX_FILES` | 否 | 单次最多处理的文件数量 |
-| `MAX_FILE_SIZE_BYTES` | 否 | 单个文件大小限制 |
-| `MAX_TOTAL_SIZE_BYTES` | 否 | 单次内容总大小限制 |
-| `MAX_ZIP_SIZE_BYTES` | 否 | 生成 ZIP 大小限制 |
+| `GITHUB_TIMEOUT_SECS` | 否 | 单次 GitHub 请求超时时间，默认 180 秒 |
+| `WRITE_TIMEOUT_SECS` | 否 | HTTP 响应写入超时时间，默认 1800 秒 |
+| `MAX_FILES` | 否 | 单次最多处理的文件数量，默认 10000 |
+| `MAX_FILE_SIZE_BYTES` | 否 | 单个文件大小限制，默认 100 MiB |
+| `MAX_TOTAL_SIZE_BYTES` | 否 | 单次内容总大小限制，默认 512 MiB |
+| `MAX_ZIP_SIZE_BYTES` | 否 | 生成 ZIP 大小限制，默认 512 MiB |
+| `MAX_TREE_REQUESTS` | 否 | 单次目录浏览最多请求 GitHub 元数据的次数，默认 500 |
+| `MAX_CONCURRENT_JOBS` | 否 | 同时进行的目录读取、下载和导出任务数，默认 2 |
+| `RATE_LIMIT_PER_MINUTE` | 否 | 单 IP 每分钟最多发起的任务数，默认 30 |
+| `LISTEN_ADDR` | 否 | 监听地址，默认 `0.0.0.0:8080` |
 
 ### GitHub Token
 
 不配置 Token 也可以启动 zzz。遇到私有仓库权限不足或 API 限流时，可以在页面中申请并填写 [Fine-grained Token](https://github.com/settings/personal-access-tokens/new)，建议只授予目标仓库的 `Contents: read-only` 权限。
 
 页面 Token 只保存在当前浏览器的 `localStorage`，通过 `X-GitHub-Token` 请求头发送，不会进入 URL。使用 Token 时建议通过 HTTPS 访问 zzz；清除输入框即可删除浏览器中的 Token。
+
+如果配置了 `ACCESS_TOKEN`，页面会要求填写服务访问密钥，并通过 `X-ZZZ-Access-Token` 请求头发送。生产环境建议同时使用 HTTPS。
+
+### 网络错误
+
+GitHub 请求由 zzz 后端发起。服务器或 Docker 容器无法访问 `api.github.com` 时，接口会返回 502；请求超时会返回 504。Token 只能解决权限和限流问题，不能替代服务器网络连接。
 
 ## API
 
@@ -100,42 +119,41 @@ docker compose -f docker/docker-compose.yml up -d
 
 `/api/tree`、`/api/download` 和 `/api/export` 支持通过 `X-GitHub-Token` 传入本次请求使用的 Token，该 Token 优先于服务端的 `GITHUB_TOKEN`。
 
-目录读取和文件收集使用 Git Trees API。对于过大的递归树，GitHub 可能返回截断结果，此时请使用更具体的目录 URL。
+目录读取和目录文件收集使用 Git Trees API；直接文件 URL 通过 Contents API 获取文件元数据。对于过大的递归树，GitHub 可能返回截断结果，此时请使用更具体的目录 URL。
 
 ## 本地开发
 
-要求：Rust 1.94+、Node.js 24+、pnpm 11.21.0。
+要求：Go 1.26+、Node.js 24+、pnpm 11.21.0。
+
+安装并启动前端：
 
 ```bash
 pnpm --dir frontend install --frozen-lockfile
 pnpm --dir frontend dev
 ```
 
-另一个终端启动后端：
+另一个终端启动 Go 后端：
 
 ```bash
-cargo run --manifest-path backend/Cargo.toml
+(cd backend && go run .)
 ```
 
-完整嵌入式构建：
+构建带嵌入前端资源的二进制：
 
 ```bash
 pnpm --dir frontend build
-rm -rf backend/static
-mkdir -p backend/static
 cp -R frontend/dist/. backend/static/
-cargo build --manifest-path backend/Cargo.toml --release --locked
+mkdir -p dist
+(cd backend && go build -trimpath -ldflags='-s -w' -o ../dist/zzz .)
 ```
 
-生产运行时只需要 `backend/target/release/zzz-backend`，前端资源已经通过 `rust-embed` 嵌入二进制。项目使用 Rustls，不依赖系统 OpenSSL。
+生产运行时只需要 `dist/zzz`；前端资源已经嵌入二进制。
 
 常用检查：
 
 ```bash
 pnpm --dir frontend build
-cargo fmt --manifest-path backend/Cargo.toml --check
-cargo clippy --manifest-path backend/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --manifest-path backend/Cargo.toml --locked
+(cd backend && gofmt -w *.go && go test ./...)
 ```
 
 ## 贡献与协议

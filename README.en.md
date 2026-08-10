@@ -7,13 +7,14 @@ A self-hosted GitHub file downloader for NAS. Enter a GitHub repository, file, o
 ## Features
 
 - Supports GitHub repository, file, and directory URLs
+- Reads directories through the Git Trees API and asks for a narrower path when GitHub truncates an oversized tree
 - Ignore patterns, include-only patterns, and directory-tree selection
 - Directory search, select all, expand/collapse all, and indeterminate states
 - File-count and estimated-size preview before downloading
 - Browser ZIP downloads or host-side folder/ZIP exports
 - Request a GitHub Token when needed and keep it in the current browser
 - Chinese/English UI and light/dark themes
-- Frontend assets embedded into the final Rust binary during the build
+- Frontend assets embedded into the final Go binary during the build
 - Docker images for `linux/amd64` and `linux/arm64`
 
 ## Quick start
@@ -33,15 +34,21 @@ Mount a host directory at `/downloads` and set `DOWNLOAD_ROOT`:
 
 ```bash
 mkdir -p downloads
+sudo chown -R 65532:65532 downloads
 docker run --rm -p 8080:8080 \
   -v "$PWD/downloads:/downloads" \
   -e DOWNLOAD_ROOT=/downloads \
   lurenyang/zzz:latest
 ```
 
-The “Save to host” option uses a path relative to `DOWNLOAD_ROOT`, such as `ebooks/2025`. Folder mode preserves the GitHub directory structure; ZIP mode creates a ZIP file inside the mounted directory. For safety, submitted paths must be relative and cannot escape `DOWNLOAD_ROOT`.
+The “Save to host” option uses a path relative to `DOWNLOAD_ROOT`, such as `ebooks/2025`. Folder mode preserves the GitHub directory structure; ZIP mode creates a ZIP file inside the mounted directory. Submitted paths cannot escape `DOWNLOAD_ROOT`.
 
-The container runs as a non-root user. Adjust the host directory permissions or ACL if it is not writable.
+The container runs as a non-root user. Adjust host directory permissions or ACL if it is not writable. Compose can run as the current host user:
+
+```bash
+mkdir -p downloads
+ZZZ_UID=$(id -u) ZZZ_GID=$(id -g) docker compose -f docker/docker-compose.yml up -d
+```
 
 ### Docker Compose
 
@@ -51,7 +58,7 @@ The repository includes [docker/docker-compose.yml](docker/docker-compose.yml):
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-It mounts `downloads/` in the repository root and enables host exports by default.
+It mounts `downloads/` in the repository root and enables host exports by default. Compose sets the GitHub request timeout to 180 seconds. If the server cannot reach GitHub, check Docker networking, DNS, and proxy settings first.
 
 ## Images and releases
 
@@ -68,7 +75,7 @@ When a `v*.*.*` tag is pushed, GitHub Actions creates a GitHub Release containin
 - `zzz-linux-arm64`
 - `SHA256SUMS`
 
-The binaries are built with Alpine/musl for Linux NAS systems and require the corresponding musl runtime and CA certificates. Network requests use Rustls and do not depend on system OpenSSL. Docker images are recommended for most deployments.
+The Go backend is built as a static `CGO_ENABLED=0` Linux binary with frontend assets embedded. The runtime does not depend on system OpenSSL, libgcc, or libstdc++.
 
 ## Configuration
 
@@ -76,19 +83,31 @@ Copy [.env.example](.env.example) as a configuration reference:
 
 | Variable | Required | Description |
 | --- | --- | --- |
+| `ACCESS_TOKEN` | No | zzz service access token; when set, all APIs except health and capabilities require it |
 | `GITHUB_TOKEN` | No | Default server-side GitHub Token |
-| `DOWNLOAD_ROOT` | No | Container-side root for host exports; the host-export option is disabled when unset |
-| `GITHUB_TIMEOUT_SECS` | No | GitHub request timeout, 60 seconds by default |
-| `MAX_FILES` | No | Maximum files processed per request |
-| `MAX_FILE_SIZE_BYTES` | No | Maximum size of one file |
-| `MAX_TOTAL_SIZE_BYTES` | No | Maximum total content size per request |
-| `MAX_ZIP_SIZE_BYTES` | No | Maximum generated ZIP size |
+| `DOWNLOAD_ROOT` | No | Container-side root for host exports; host export is disabled when unset |
+| `GITHUB_TIMEOUT_SECS` | No | Per-request GitHub timeout, 180 seconds by default |
+| `WRITE_TIMEOUT_SECS` | No | HTTP response write timeout, 1800 seconds by default |
+| `MAX_FILES` | No | Maximum files per request, 10000 by default |
+| `MAX_FILE_SIZE_BYTES` | No | Maximum size of one file, 100 MiB by default |
+| `MAX_TOTAL_SIZE_BYTES` | No | Maximum total content size, 512 MiB by default |
+| `MAX_ZIP_SIZE_BYTES` | No | Maximum generated ZIP size, 512 MiB by default |
+| `MAX_TREE_REQUESTS` | No | Maximum GitHub metadata requests per tree browse, 500 by default |
+| `MAX_CONCURRENT_JOBS` | No | Number of concurrent tree/download/export jobs, 2 by default |
+| `RATE_LIMIT_PER_MINUTE` | No | Maximum jobs per IP per minute, 30 by default |
+| `LISTEN_ADDR` | No | Listen address, `0.0.0.0:8080` by default |
 
 ### GitHub Token
 
 zzz can start without a Token. For private repositories or API rate limits, create and paste a [Fine-grained Token](https://github.com/settings/personal-access-tokens/new) in the page. Grant only `Contents: read-only` access to the target repository when possible.
 
 The page stores the Token only in the current browser's `localStorage` and sends it in the `X-GitHub-Token` header, never in the URL. Use HTTPS when accessing your zzz service with a Token; clearing the field removes the browser copy.
+
+When `ACCESS_TOKEN` is configured, the page asks for the service access token and sends it in the `X-ZZZ-Access-Token` header. HTTPS is recommended in production.
+
+### Network errors
+
+GitHub requests are made by the zzz backend. If the server or Docker container cannot reach `api.github.com`, the API returns 502; request timeouts return 504. A Token can solve permissions and rate limits, but cannot replace network connectivity.
 
 ## API
 
@@ -100,42 +119,41 @@ The page stores the Token only in the current browser's `localStorage` and sends
 
 `/api/tree`, `/api/download`, and `/api/export` accept `X-GitHub-Token` for a request-scoped Token. It takes precedence over the server-side `GITHUB_TOKEN`.
 
-Directory reading and file collection use the Git Trees API. Very large recursive trees may be truncated by GitHub; use a more specific directory URL in that case.
+Directory reading and directory file collection use the Git Trees API; direct file URLs use the Contents API for file metadata. If GitHub truncates an oversized recursive tree, use a more specific directory URL.
 
 ## Local development
 
-Requirements: Rust 1.94+, Node.js 24+, and pnpm 11.21.0.
+Requirements: Go 1.26+, Node.js 24+, and pnpm 11.21.0.
+
+Install and start the frontend:
 
 ```bash
 pnpm --dir frontend install --frozen-lockfile
 pnpm --dir frontend dev
 ```
 
-Start the backend in another terminal:
+Start the Go backend in another terminal:
 
 ```bash
-cargo run --manifest-path backend/Cargo.toml
+(cd backend && go run .)
 ```
 
-Build a fully embedded binary:
+Build a binary with embedded frontend assets:
 
 ```bash
 pnpm --dir frontend build
-rm -rf backend/static
-mkdir -p backend/static
 cp -R frontend/dist/. backend/static/
-cargo build --manifest-path backend/Cargo.toml --release --locked
+mkdir -p dist
+(cd backend && go build -trimpath -ldflags='-s -w' -o ../dist/zzz .)
 ```
 
-The production runtime only needs `backend/target/release/zzz-backend`; frontend assets are embedded with `rust-embed`. The project uses Rustls and does not depend on system OpenSSL.
+Production only needs `dist/zzz`; frontend assets are embedded in the binary.
 
 Useful checks:
 
 ```bash
 pnpm --dir frontend build
-cargo fmt --manifest-path backend/Cargo.toml --check
-cargo clippy --manifest-path backend/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --manifest-path backend/Cargo.toml --locked
+(cd backend && gofmt -w *.go && go test ./...)
 ```
 
 ## Contributing and license

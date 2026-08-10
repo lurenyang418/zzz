@@ -5,12 +5,14 @@
   export let node;
   export let selectedPaths = [];
   export let expandedPaths = [];
+  export let allSelected = false;
 
   const dispatch = createEventDispatcher();
   $: expanded = expandedPaths.includes(node.path);
   $: descendantFiles = collectFiles(node);
-  $: checked = descendantFiles.length > 0 && descendantFiles.every((file) => isSelected(file.path));
+  $: checked = allSelected || (descendantFiles.length > 0 && descendantFiles.every((file) => isSelected(file.path)));
   $: indeterminate = node.kind === 'dir'
+    && !allSelected
     && descendantFiles.some((file) => isSelected(file.path))
     && !checked;
   let checkbox;
@@ -30,7 +32,7 @@
   }
 
   function isSelected(path) {
-    return selectedPaths.some((selected) => path === selected || path.startsWith(selected + '/'));
+    return allSelected || selectedPaths.some((selected) => path === selected || path.startsWith(selected + '/'));
   }
 
   function formatSize(size) {
@@ -64,6 +66,7 @@
         <svelte:self
           node={child}
           {selectedPaths}
+          {allSelected}
           {expandedPaths}
           on:toggle={(event) => dispatch('toggle', event.detail)}
           on:expand={(event) => dispatch('expand', event.detail)}

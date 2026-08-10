@@ -5,9 +5,7 @@
 ## Testing
 
 - [ ] `pnpm --dir frontend build`
-- [ ] `cargo fmt --manifest-path backend/Cargo.toml --check`
-- [ ] `cargo clippy --manifest-path backend/Cargo.toml --locked --all-targets -- -D warnings`
-- [ ] `cargo test --manifest-path backend/Cargo.toml --locked`
+- [ ] `(cd backend && gofmt -w *.go && go test ./...)`
 - [ ] Docker/Compose validation, if applicable
 
 ## Checklist

@@ -6,6 +6,18 @@ The project follows a lightweight changelog format based on [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-10
+
+### Changed
+
+- Replaced the Rust backend with a pure Go backend using only the standard library.
+- Embedded frontend assets into the Go binary and removed the runtime's Rust/OpenSSL toolchain dependencies.
+- Directory browsing now uses the GitHub Git Trees API and reports upstream network failures as 502/504.
+- Directory browsing separates tree discovery limits from download limits and caps metadata requests per operation.
+- Added optional service authentication, request concurrency limits, per-IP rate limits, and sanitized internal errors.
+- Browser ZIP downloads now use a temporary file instead of retaining the complete archive in memory.
+- Added Dependabot configuration and guarded automatic merge for patch/minor dependency updates.
+
 ### Added
 
 - GitHub repository, directory-tree selection, filtering, browser ZIP download, and host-side export.

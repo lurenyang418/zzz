@@ -5,30 +5,24 @@ RUN npm install -g pnpm@11.21.0 && pnpm install --frozen-lockfile
 COPY frontend/ ./
 RUN pnpm build
 
-FROM rust:1.94-alpine AS backend-builder
-RUN apk add --no-cache \
-    build-base \
-    cmake \
-    nasm \
-    perl \
-    pkgconf
+FROM golang:1.26-alpine AS backend-builder
+ARG TARGETARCH
 WORKDIR /app
-COPY backend/Cargo.toml backend/Cargo.lock ./backend/
-COPY backend/src ./backend/src
+COPY backend/go.mod ./backend/
+COPY backend/*.go ./backend/
+COPY backend/static ./backend/static
 COPY --from=frontend-builder /app/dist ./backend/static
 WORKDIR /app/backend
-RUN cargo build --release --locked
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH \
+    go build -trimpath -ldflags='-s -w' -o /out/zzz .
 
 FROM scratch AS binary-export
-COPY --from=backend-builder /app/backend/target/release/zzz-backend /zzz
+COPY --from=backend-builder /out/zzz /zzz
 
 FROM alpine:3.24.1 AS runtime
-RUN apk add --no-cache \
-    ca-certificates \
-    libgcc \
-    && update-ca-certificates
+RUN apk add --no-cache ca-certificates && update-ca-certificates
 WORKDIR /app
-COPY --from=backend-builder /app/backend/target/release/zzz-backend /app/zzz
+COPY --from=backend-builder /out/zzz /app/zzz
 EXPOSE 8080
 USER 65532:65532
 ENTRYPOINT ["/app/zzz"]

@@ -2,14 +2,12 @@
 .github
 .codex
 .agents
+.env
 tmp
 downloads
-.env
-
 **/node_modules
 **/target
-frontend/dist
-backend/static
-
+backend/static/*
+!backend/static/.gitkeep
 *.log
 .DS_Store

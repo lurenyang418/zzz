@@ -5,6 +5,7 @@
   export let entries = [];
   export let selectedPaths = [];
   export let selectionStats = { fileCount: 0, size: 0 };
+  export let allSelected = false;
 
   let expandedPaths = [''];
   let searchTerm = '';
@@ -12,7 +13,7 @@
   $: filteredEntries = filterEntries(entries, searchTerm);
   $: tree = buildTree(filteredEntries, $t('tree.repository'));
   $: fileCount = entries.filter((entry) => entry.kind === 'file').length;
-  $: selectedFileCount = entries.filter((entry) => entry.kind === 'file' && isSelected(entry.path)).length;
+  $: selectedFileCount = allSelected ? fileCount : entries.filter((entry) => entry.kind === 'file' && isSelected(entry.path)).length;
   $: selectedSize = entries
     .filter((entry) => entry.kind === 'file' && isSelected(entry.path))
     .reduce((total, entry) => total + (entry.size || 0), 0);
@@ -82,14 +83,18 @@
   }
 
   function toggle(node) {
+    if (allSelected) {
+      allSelected = false;
+      selectedPaths = entries.filter((entry) => entry.kind === 'file').map((entry) => entry.path);
+    }
     const descendantFiles = collectFiles(node);
-    const allSelected = descendantFiles.length > 0 && descendantFiles.every((file) => isSelected(file.path));
+    const nodeFullySelected = descendantFiles.length > 0 && descendantFiles.every((file) => isSelected(file.path));
 
     if (node.kind === 'dir') {
       selectedPaths = selectedPaths.filter((selected) =>
         selected !== node.path && !selected.startsWith(node.path + '/')
       );
-      if (!allSelected) selectedPaths = [...selectedPaths, node.path];
+      if (!nodeFullySelected) selectedPaths = [...selectedPaths, node.path];
       return;
     }
 
@@ -114,7 +119,7 @@
   }
 
   function isSelected(path) {
-    return selectedPaths.some((selected) => path === selected || path.startsWith(selected + '/'));
+    return allSelected || selectedPaths.some((selected) => path === selected || path.startsWith(selected + '/'));
   }
 
   function collectFiles(node) {
@@ -154,10 +159,12 @@
   }
 
   function selectAll() {
-    selectedPaths = entries.filter((entry) => entry.kind === 'file').map((entry) => entry.path);
+    allSelected = true;
+    selectedPaths = [];
   }
 
   function clearSelection() {
+    allSelected = false;
     selectedPaths = [];
   }
 </script>
@@ -192,6 +199,7 @@
       <TreeNode
         node={tree}
         {selectedPaths}
+        {allSelected}
         {expandedPaths}
         on:toggle={(event) => toggle(event.detail)}
         on:expand={(event) => toggleExpand(event.detail)}

@@ -11,6 +11,7 @@
 
   let url = '';
   let githubToken = '';
+  let accessToken = '';
   let tokenStorageReady = false;
   let ignorePatterns = ['node_modules/', '.git/', 'dist/', 'build/', '.DS_Store', '.env'];
   let includeOnly = [];
@@ -26,10 +27,13 @@
   let hostPath = '';
   let hostFormat = 'folder';
   let hostExportEnabled = false;
+  let serviceAuthRequired = false;
+  let allSelected = false;
   let successMessage = '';
 
   onMount(() => {
     githubToken = window.localStorage.getItem('zzz.githubToken') || '';
+    accessToken = window.localStorage.getItem('zzz.accessToken') || '';
     try {
       urlHistory = JSON.parse(window.localStorage.getItem('zzz.urlHistory') || '[]');
     } catch {
@@ -37,6 +41,7 @@
     }
     loadCapabilities().then((capabilities) => {
       hostExportEnabled = capabilities.host_export;
+      serviceAuthRequired = capabilities.auth_required;
     }).catch(() => {
       hostExportEnabled = false;
     });
@@ -46,6 +51,8 @@
   $: if (tokenStorageReady) {
     if (githubToken.trim()) window.localStorage.setItem('zzz.githubToken', githubToken.trim());
     else window.localStorage.removeItem('zzz.githubToken');
+    if (accessToken.trim()) window.localStorage.setItem('zzz.accessToken', accessToken.trim());
+    else window.localStorage.removeItem('zzz.accessToken');
   }
 
   function recordUrl() {
@@ -65,6 +72,7 @@
     treeLoaded = false;
     treeEntries = [];
     selectedPaths = [];
+    allSelected = false;
     showTokenHelp = false;
     successMessage = '';
   }
@@ -77,7 +85,7 @@
     successMessage = '';
     recordUrl();
     try {
-      treeEntries = await loadTree(url.trim(), ignorePatterns, includeOnly, githubToken);
+      treeEntries = await loadTree(url.trim(), ignorePatterns, includeOnly, githubToken, accessToken);
       selectedPaths = [];
       treeLoaded = true;
       downloadStatus.set('idle');
@@ -94,7 +102,7 @@
 
   async function handleDownload() {
     if (!url.trim() || isLoading) return;
-    if (treeLoaded && selectedPaths.length === 0) {
+    if (treeLoaded && selectedPaths.length === 0 && !allSelected) {
       errorMessage.set($t('errors.selectRequired'));
       downloadStatus.set('error');
       return;
@@ -115,7 +123,9 @@
           ignore: ignorePatterns,
           include: includeOnly,
           select: treeLoaded ? selectedPaths : undefined,
+          selectAll: treeLoaded ? allSelected : undefined,
           token: githubToken,
+          accessToken,
           destination: hostPath,
           format: hostFormat,
         });
@@ -128,7 +138,9 @@
           ignore: ignorePatterns,
           include: includeOnly,
           select: treeLoaded ? selectedPaths : undefined,
+          selectAll: treeLoaded ? allSelected : undefined,
           token: githubToken,
+          accessToken,
         });
         progress.set(100);
         downloadStatus.set('done');
@@ -181,6 +193,8 @@
       <InputForm
         bind:url
         bind:githubToken
+        bind:accessToken
+        {serviceAuthRequired}
         loading={isLoading}
         loadingTree={isLoadingTree}
         on:input={invalidateTree}
@@ -209,7 +223,7 @@
       {/if}
       <FilterConfig bind:ignorePatterns bind:includeOnly on:change={invalidateTree} />
       {#if treeLoaded}
-        <TreePicker entries={treeEntries} bind:selectedPaths bind:selectionStats />
+        <TreePicker entries={treeEntries} bind:selectedPaths bind:selectionStats bind:allSelected />
       {/if}
       <OutputConfig bind:mode={outputMode} bind:hostPath bind:hostFormat {hostExportEnabled} />
       <div class="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">

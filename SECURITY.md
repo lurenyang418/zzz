@@ -6,7 +6,7 @@ Only the latest `main` branch and the latest published release receive security 
 
 ## Reporting a vulnerability
 
-Please use GitHub's private vulnerability reporting or contact the repository maintainers privately through GitHub. Do not open a public issue for an unpatched vulnerability.
+Please use [GitHub's private vulnerability reporting](https://github.com/lurenyang418/zzz/security/advisories/new) or contact the repository maintainers privately through GitHub. Do not open a public issue for an unpatched vulnerability.
 
 Include, when safe to share:
 

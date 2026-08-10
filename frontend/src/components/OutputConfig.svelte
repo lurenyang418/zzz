@@ -4,6 +4,7 @@
   export let mode = 'browser';
   export let hostPath = '';
   export let hostFormat = 'folder';
+  export let hostPathMode = 'original';
   export let hostExportEnabled = false;
 </script>
 
@@ -42,23 +43,47 @@
         />
         <p class="mt-1.5 text-xs leading-5 text-slate-400 dark:text-slate-500">{$t('output.hostPathHelp')}</p>
       </div>
-      <div>
-        <p class="mb-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">{$t('output.format')}</p>
-        <div class="flex gap-2">
-          <button
-            type="button"
-            class={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${hostFormat === 'folder' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
-            on:click={() => (hostFormat = 'folder')}
-          >{$t('output.folder')}</button>
-          <button
-            type="button"
-            class={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${hostFormat === 'zip' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
-            on:click={() => (hostFormat = 'zip')}
-          >{$t('output.zip')}</button>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div>
+          <p class="mb-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">{$t('output.format')}</p>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${hostFormat === 'folder' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
+              on:click={() => (hostFormat = 'folder')}
+            >{$t('output.folder')}</button>
+            <button
+              type="button"
+              class={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${hostFormat === 'zip' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
+              on:click={() => (hostFormat = 'zip')}
+            >{$t('output.zip')}</button>
+          </div>
+          <p class="mt-1.5 text-xs leading-5 text-slate-400 dark:text-slate-500">
+            {hostFormat === 'folder'
+              ? hostPathMode === 'smart' ? $t('output.folderSmartHelp') : $t('output.folderHelp')
+              : $t('output.zipHelp')}
+          </p>
         </div>
-        <p class="mt-1.5 text-xs leading-5 text-slate-400 dark:text-slate-500">
-          {hostFormat === 'folder' ? $t('output.folderHelp') : $t('output.zipHelp')}
-        </p>
+        {#if hostFormat === 'folder'}
+          <div>
+          <p class="mb-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">{$t('output.structure')}</p>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${hostPathMode === 'original' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
+              on:click={() => (hostPathMode = 'original')}
+            >{$t('output.structureOriginal')}</button>
+            <button
+              type="button"
+              class={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${hostPathMode === 'smart' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
+              on:click={() => (hostPathMode = 'smart')}
+            >{$t('output.structureSmart')}</button>
+          </div>
+          <p class="mt-1.5 text-xs leading-5 text-slate-400 dark:text-slate-500">
+            {hostPathMode === 'smart' ? $t('output.structureSmartHelp') : $t('output.structureOriginalHelp')}
+          </p>
+          </div>
+        {/if}
       </div>
     </div>
   {/if}

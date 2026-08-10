@@ -12,6 +12,7 @@ A self-hosted GitHub file downloader for NAS. Enter a GitHub repository, file, o
 - Directory search, select all, expand/collapse all, and indeterminate states
 - File-count and estimated-size preview before downloading
 - Browser ZIP downloads or host-side folder/ZIP exports
+- Folder exports support original and smart structures; smart mode removes shared parent directories while preserving necessary branches
 - Request a GitHub Token when needed and keep it in the current browser
 - Chinese/English UI and light/dark themes
 - Frontend assets embedded into the final Go binary during the build
@@ -40,7 +41,7 @@ docker run --rm -p 8080:8080 \
   lurenyang/zzz:latest
 ```
 
-The “Save to host” option uses a path relative to `DOWNLOAD_ROOT`, such as `ebooks/2025`. Folder mode preserves the GitHub directory structure; ZIP mode creates a ZIP file inside the mounted directory. Submitted paths cannot escape `DOWNLOAD_ROOT`.
+The “Save to host” option uses a path relative to `DOWNLOAD_ROOT`, such as `ebooks/2025`. Folder exports can use the original or smart structure: selecting only `a/b/c` starts the output at `c`; selecting both `a/b/c` and `a/d` removes the shared `a` while preserving the necessary `b/c` and `d` branches. ZIP mode creates a ZIP file inside the mounted directory. Submitted paths cannot escape `DOWNLOAD_ROOT`.
 
 Compose is recommended after creating the host directory:
 

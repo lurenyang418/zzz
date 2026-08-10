@@ -173,10 +173,8 @@ func (s *server) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := newGitHubClient(s.config, requestToken(r))
-	selection := request.Select
-	if request.All {
-		selection = nil
-	}
+	selection := normalizeSelection(request.Select, request.All)
+	request.Select = selection
 	files, err := client.collectFiles(r.Context(), target, filter, selection)
 	if err != nil {
 		writeError(w, err)

@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -16,6 +18,7 @@ type exportRequest struct {
 	All         bool     `json:"all"`
 	Destination string   `json:"destination"`
 	Format      string   `json:"format"`
+	PathMode    string   `json:"path_mode"`
 }
 
 type exportResult struct {
@@ -57,12 +60,26 @@ func exportToHost(ctx context.Context, files []FileEntry, client *GitHubClient, 
 	}
 	switch format {
 	case "folder":
-		return exportFolder(ctx, root, relative, files, client, config)
+		pathMode := request.PathMode
+		if pathMode == "" {
+			pathMode = "original"
+		}
+		if pathMode != "original" && pathMode != "smart" {
+			return exportResult{}, invalidError("unsupported folder path mode: " + pathMode)
+		}
+		return exportFolder(ctx, root, relative, files, client, config, normalizeSelection(request.Select, request.All), pathMode)
 	case "zip":
 		return exportZIP(ctx, root, relative, files, client, config)
 	default:
 		return exportResult{}, invalidError("unsupported export format: " + format)
 	}
+}
+
+func normalizeSelection(selection []string, all bool) []string {
+	if all {
+		return nil
+	}
+	return selection
 }
 
 func hostExportUnavailableError() *APIError {
@@ -90,7 +107,7 @@ func isWritableDirectory(directory string) bool {
 	return os.Remove(testPath) == nil
 }
 
-func exportFolder(ctx context.Context, root, destination string, files []FileEntry, client *GitHubClient, config Config) (exportResult, error) {
+func exportFolder(ctx context.Context, root, destination string, files []FileEntry, client *GitHubClient, config Config, selection []string, pathMode string) (exportResult, error) {
 	output, err := safeJoin(root, destination)
 	if err != nil {
 		return exportResult{}, err
@@ -100,6 +117,10 @@ func exportFolder(ctx context.Context, root, destination string, files []FileEnt
 	}
 	if err := os.MkdirAll(output, 0o755); err != nil {
 		return exportResult{}, &APIError{Status: 500, Message: "could not create output folder", Cause: err}
+	}
+	stripPrefix := ""
+	if pathMode == "smart" {
+		stripPrefix = smartFolderPrefix(files, selection)
 	}
 	var totalSize int64
 	for _, file := range files {
@@ -111,7 +132,11 @@ func exportFolder(ctx context.Context, root, destination string, files []FileEnt
 		if totalSize > config.MaxTotalSize {
 			return exportResult{}, &APIError{Status: 413, Message: "total downloaded content is too large"}
 		}
-		outputPath, err := safeJoin(output, file.Path)
+		relativePath := file.Path
+		if stripPrefix != "" {
+			relativePath = strings.TrimPrefix(relativePath, stripPrefix+"/")
+		}
+		outputPath, err := safeJoin(output, relativePath)
 		if err != nil {
 			return exportResult{}, err
 		}
@@ -126,6 +151,82 @@ func exportFolder(ctx context.Context, root, destination string, files []FileEnt
 		}
 	}
 	return exportResult{Format: "folder", Path: filepath.ToSlash(destination), FileCount: len(files), TotalSize: totalSize}, nil
+}
+
+func smartFolderPrefix(files []FileEntry, selection []string) string {
+	if len(files) == 0 || len(selection) == 0 {
+		return ""
+	}
+
+	parents := make([]string, 0, len(selection))
+	for _, root := range reduceSelection(selection) {
+		parent := path.Dir(root)
+		if parent == "." {
+			parent = ""
+		}
+		parents = append(parents, parent)
+	}
+	return commonPathPrefix(parents)
+}
+
+func reduceSelection(selection []string) []string {
+	unique := make(map[string]struct{}, len(selection))
+	for _, selected := range selection {
+		selected = strings.Trim(selected, "/")
+		if selected != "" {
+			unique[selected] = struct{}{}
+		}
+	}
+	paths := make([]string, 0, len(unique))
+	for selected := range unique {
+		paths = append(paths, selected)
+	}
+	sort.Slice(paths, func(i, j int) bool {
+		if len(paths[i]) == len(paths[j]) {
+			return paths[i] < paths[j]
+		}
+		return len(paths[i]) < len(paths[j])
+	})
+	reduced := make([]string, 0, len(paths))
+	for _, candidate := range paths {
+		covered := false
+		for _, parent := range reduced {
+			if candidate == parent || strings.HasPrefix(candidate, parent+"/") {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			reduced = append(reduced, candidate)
+		}
+	}
+	return reduced
+}
+
+func commonPathPrefix(paths []string) string {
+	if len(paths) == 0 || paths[0] == "" {
+		return ""
+	}
+	parts := strings.Split(paths[0], "/")
+	for _, value := range paths[1:] {
+		if value == "" {
+			return ""
+		}
+		other := strings.Split(value, "/")
+		limit := len(parts)
+		if len(other) < limit {
+			limit = len(other)
+		}
+		index := 0
+		for index < limit && parts[index] == other[index] {
+			index++
+		}
+		parts = parts[:index]
+		if len(parts) == 0 {
+			return ""
+		}
+	}
+	return strings.Join(parts, "/")
 }
 
 func exportZIP(ctx context.Context, root, destination string, files []FileEntry, client *GitHubClient, config Config) (exportResult, error) {

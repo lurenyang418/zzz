@@ -26,6 +26,7 @@
   let outputMode = 'browser';
   let hostPath = '';
   let hostFormat = 'folder';
+  let hostPathMode = 'original';
   let hostExportEnabled = false;
   let serviceAuthRequired = false;
   let allSelected = false;
@@ -128,6 +129,7 @@
           accessToken,
           destination: hostPath,
           format: hostFormat,
+          pathMode: hostPathMode,
         });
         progress.set(100);
         downloadStatus.set('done');
@@ -225,7 +227,7 @@
       {#if treeLoaded}
         <TreePicker entries={treeEntries} bind:selectedPaths bind:selectionStats bind:allSelected />
       {/if}
-      <OutputConfig bind:mode={outputMode} bind:hostPath bind:hostFormat {hostExportEnabled} />
+      <OutputConfig bind:mode={outputMode} bind:hostPath bind:hostFormat bind:hostPathMode {hostExportEnabled} />
       <div class="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
         <button
           type="button"

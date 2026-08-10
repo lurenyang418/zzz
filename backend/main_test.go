@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -57,6 +59,131 @@ func TestSafeRelativePath(t *testing.T) {
 	}
 	if _, err := safeRelativePath("ebooks/2025"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSmartFolderPrefix(t *testing.T) {
+	tests := []struct {
+		name      string
+		files     []FileEntry
+		selection []string
+		want      string
+	}{
+		{
+			name:      "single directory keeps its name",
+			files:     []FileEntry{{Path: "a/b/c/file.txt"}},
+			selection: []string{"a/b/c"},
+			want:      "a/b",
+		},
+		{
+			name:      "branches keep their meaningful names",
+			files:     []FileEntry{{Path: "a/b/c/file.txt"}, {Path: "a/d/file.txt"}},
+			selection: []string{"a/b/c", "a/d"},
+			want:      "a",
+		},
+		{
+			name:      "single file keeps its name",
+			files:     []FileEntry{{Path: "a/b/file.txt"}},
+			selection: []string{"a/b/file.txt"},
+			want:      "a/b",
+		},
+		{
+			name:      "root selections do not strip anything",
+			files:     []FileEntry{{Path: "c/file.txt"}, {Path: "d/file.txt"}},
+			selection: []string{"c", "d"},
+			want:      "",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := smartFolderPrefix(test.files, test.selection); got != test.want {
+				t.Fatalf("smartFolderPrefix() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeSelection(t *testing.T) {
+	selection := []string{"a/b"}
+	if got := normalizeSelection(selection, true); got != nil {
+		t.Fatalf("normalizeSelection(all=true) = %#v, want nil", got)
+	}
+	if got := normalizeSelection(selection, false); len(got) != 1 || got[0] != "a/b" {
+		t.Fatalf("normalizeSelection(all=false) = %#v, want original selection", got)
+	}
+}
+
+func TestExportFolderPathModes(t *testing.T) {
+	config := Config{MaxFileSize: 1024 * 1024, MaxTotalSize: 1024 * 1024}
+	client := newGitHubClient(config, "")
+	client.http = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader("test content")),
+		}, nil
+	})}
+	files := []FileEntry{
+		{Path: "a/b/c/one.txt", DownloadURL: "https://raw.githubusercontent.com/owner/repo/main/one.txt", Size: 12},
+		{Path: "a/d/two.txt", DownloadURL: "https://raw.githubusercontent.com/owner/repo/main/two.txt", Size: 12},
+	}
+
+	tests := []struct {
+		name      string
+		pathMode  string
+		selection []string
+		want      []string
+		missing   []string
+	}{
+		{
+			name:      "smart mode strips shared parent",
+			pathMode:  "smart",
+			selection: []string{"a/b/c", "a/d"},
+			want:      []string{"out/b/c/one.txt", "out/d/two.txt"},
+			missing:   []string{"out/a/b/c/one.txt", "out/a/d/two.txt"},
+		},
+		{
+			name:      "original mode preserves paths",
+			pathMode:  "original",
+			selection: []string{"a/b/c", "a/d"},
+			want:      []string{"out/a/b/c/one.txt", "out/a/d/two.txt"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			if _, err := exportFolder(context.Background(), root, "out", files, client, config, test.selection, test.pathMode); err != nil {
+				t.Fatalf("exportFolder() error = %v", err)
+			}
+			for _, relative := range test.want {
+				if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); err != nil {
+					t.Fatalf("expected exported file %q: %v", relative, err)
+				}
+			}
+			for _, relative := range test.missing {
+				if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
+					t.Fatalf("expected %q to be absent, err=%v", relative, err)
+				}
+			}
+		})
+	}
+}
+
+func TestCollectFilesReturnsNotFoundWhenFilterRemovesEverything(t *testing.T) {
+	config := Config{MaxFileSize: 1024 * 1024, MaxTotalSize: 1024 * 1024}
+	client := newGitHubClient(config, "")
+	client.http = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return jsonHTTPResponse(struct {
+			Tree []githubTreeEntry `json:"tree"`
+		}{Tree: []githubTreeEntry{{Path: "ignored.txt", Type: "blob", Size: 10}}}), nil
+	})}
+	filter, err := newFilter([]string{"ignored.txt"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.collectFiles(context.Background(), GitHubPath{Owner: "owner", Repo: "repo", Reference: "main"}, filter, nil)
+	if asAPIError(err).Status != http.StatusNotFound {
+		t.Fatalf("expected no matching files to return 404, got %v", err)
 	}
 }
 

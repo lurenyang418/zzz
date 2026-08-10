@@ -18,9 +18,9 @@
   }
 </script>
 
-<form on:submit={handleSubmit} class="space-y-5">
+<form on:submit={handleSubmit} class="space-y-3">
   <div>
-    <label for="github-url" class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">{$t('input.urlLabel')}</label>
+    <label for="github-url" class="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">{$t('input.urlLabel')}</label>
     <input
       id="github-url"
       type="url"
@@ -30,14 +30,14 @@
       required
       disabled={loading}
       on:input={() => dispatch('input')}
-      class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600 dark:focus:ring-indigo-950 dark:disabled:bg-slate-800"
+      class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600 dark:focus:ring-indigo-950 dark:disabled:bg-slate-800"
     />
-    <p class="mt-2 text-xs text-slate-400 dark:text-slate-500">{$t('input.urlHelp')}</p>
+    <p class="mt-1.5 text-xs text-slate-400 dark:text-slate-500">{$t('input.urlHelp')}</p>
   </div>
 
-  <details open={Boolean(githubToken)} class="border-t border-slate-100 pt-4 dark:border-slate-800">
+  <details open={Boolean(githubToken)} class="border-t border-slate-100 pt-3 dark:border-slate-800">
     <summary class="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">{$t('input.tokenSummary')}</summary>
-    <div class="mt-3">
+    <div class="mt-2">
       <div class="flex gap-2">
         <input
           type={showToken ? 'text' : 'password'}
@@ -46,7 +46,7 @@
           autocomplete="off"
           spellcheck="false"
           disabled={loading}
-          class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600 dark:focus:ring-indigo-950 dark:disabled:bg-slate-800"
+          class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-mono text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600 dark:focus:ring-indigo-950 dark:disabled:bg-slate-800"
         />
         <button
           type="button"
@@ -61,7 +61,7 @@
           >{$t('input.clear')}</button>
         {/if}
       </div>
-      <p class="mt-2 text-xs leading-5 text-slate-400 dark:text-slate-500">
+      <p class="mt-1.5 text-xs leading-4 text-slate-400 dark:text-slate-500">
         {$t('input.tokenHelp')}
         <a
           href="https://github.com/settings/personal-access-tokens/new"
@@ -74,9 +74,9 @@
   </details>
 
   {#if serviceAuthRequired}
-    <details open={Boolean(accessToken)} class="border-t border-slate-100 pt-4 dark:border-slate-800">
+    <details open={Boolean(accessToken)} class="border-t border-slate-100 pt-3 dark:border-slate-800">
       <summary class="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">{$t('input.accessTokenSummary')}</summary>
-      <div class="mt-3 flex gap-2">
+      <div class="mt-2 flex gap-2">
         <input
           type={showAccessToken ? 'text' : 'password'}
           bind:value={accessToken}
@@ -84,7 +84,7 @@
           autocomplete="off"
           spellcheck="false"
           disabled={loading}
-          class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600 dark:focus:ring-indigo-950 dark:disabled:bg-slate-800"
+          class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-mono text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600 dark:focus:ring-indigo-950 dark:disabled:bg-slate-800"
         />
         <button type="button" on:click={() => (showAccessToken = !showAccessToken)} class="rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">
           {showAccessToken ? $t('input.hide') : $t('input.show')}
@@ -93,7 +93,7 @@
           <button type="button" on:click={() => (accessToken = '')} class="rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">{$t('input.clear')}</button>
         {/if}
       </div>
-      <p class="mt-2 text-xs leading-5 text-slate-400 dark:text-slate-500">{$t('input.accessTokenHelp')}</p>
+      <p class="mt-1.5 text-xs leading-4 text-slate-400 dark:text-slate-500">{$t('input.accessTokenHelp')}</p>
     </details>
   {/if}
 
@@ -101,7 +101,7 @@
     type="button"
     disabled={!url.trim() || loading || loadingTree}
     on:click={() => dispatch('loadTree')}
-    class="w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-900 dark:bg-indigo-950/50 dark:text-indigo-300 dark:hover:bg-indigo-950"
+    class="w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-900 dark:bg-indigo-950/50 dark:text-indigo-300 dark:hover:bg-indigo-950"
   >
     {loadingTree ? $t('input.loadingTree') : $t('input.browse')}
   </button>

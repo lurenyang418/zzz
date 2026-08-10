@@ -82,6 +82,7 @@ export interface Capabilities {
 export interface HostExportParams extends DownloadParams {
   destination?: string;
   format: 'folder' | 'zip';
+  pathMode?: 'original' | 'smart';
 }
 
 export interface HostExportResponse {
@@ -122,6 +123,7 @@ export async function exportToHost(params: HostExportParams): Promise<HostExport
     all: Boolean(params.selectAll),
     destination: params.destination?.trim() || undefined,
     format: params.format,
+    path_mode: params.pathMode || 'original',
   }, {
     timeout: 1_800_000,
     headers: tokenHeaders(params.token, params.accessToken),

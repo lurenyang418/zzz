@@ -6,6 +6,18 @@ The project follows a lightweight changelog format based on [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-08-10
+
+### Added
+
+- Added tabbed file-filter controls and smart folder export paths that remove redundant shared parent directories.
+
+### Fixed
+
+- Unified `all` and `select` handling before calculating smart folder paths.
+- Updated folder export help text to reflect the selected directory structure mode.
+- Added coverage for real folder export paths, filtered-empty results, and selection edge cases.
+
 ## [0.1.2] - 2026-08-10
 
 ### Changed

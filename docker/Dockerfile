@@ -23,7 +23,6 @@ FROM alpine:3.24.1
 RUN apk add --no-cache \
     ca-certificates \
     libgcc \
-    libstdc++ \
     && update-ca-certificates
 WORKDIR /app
 COPY --from=backend-builder /app/backend/target/release/zzz-backend /app/zzz

@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS frontend-builder
+FROM node:26-bookworm-slim AS frontend-builder
 WORKDIR /app
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN npm install -g pnpm@11.21.0 && pnpm install --frozen-lockfile

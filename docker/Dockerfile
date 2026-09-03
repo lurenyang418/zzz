@@ -1,11 +1,11 @@
-FROM node:24-bookworm-slim AS frontend-builder
+FROM node:26-bookworm-slim AS frontend-builder
 WORKDIR /app
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN npm install -g pnpm@11.21.0 && pnpm install --frozen-lockfile
 COPY frontend/ ./
 RUN pnpm build
 
-FROM golang:1.26-alpine AS backend-builder
+FROM golang:1.27-alpine AS backend-builder
 ARG TARGETARCH
 WORKDIR /app
 COPY backend/go.mod ./backend/

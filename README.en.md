@@ -70,6 +70,7 @@ It mounts `downloads/` in the repository root and enables host exports by defaul
 
 Images are published for `linux/amd64` and `linux/arm64`; Docker selects the matching architecture automatically.
 Images include OCI metadata such as project/source URLs, license, version, revision, and build time.
+GitHub Actions builds and publishes images only when a `v*.*.*` version tag is pushed; pushes to `main` and pull requests do not trigger image builds.
 
 When a `v*.*.*` tag is pushed, GitHub Actions creates a GitHub Release containing:
 

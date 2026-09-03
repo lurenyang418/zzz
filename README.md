@@ -70,6 +70,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 镜像同时提供 `linux/amd64` 和 `linux/arm64`，Docker 会根据宿主机自动选择架构。
 镜像包含 OCI 标准元数据，包括项目地址、源码地址、许可证、版本、提交 SHA 和构建时间。
+GitHub Actions 仅在推送 `v*.*.*` 版本 tag 时构建并发布镜像；推送 `main` 或提交 Pull Request 不会触发镜像构建。
 
 推送 `v*.*.*` 版本 tag 时，GitHub Actions 会创建 GitHub Release，并上传：
 

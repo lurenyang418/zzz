@@ -6,6 +6,10 @@ The project follows a lightweight changelog format based on [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Changed
+
+- Build and publish container images only when a `v*.*.*` version tag is pushed.
+
 ## [0.1.3] - 2026-08-10
 
 ### Added

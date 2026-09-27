@@ -19,7 +19,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH \
 FROM scratch AS binary-export
 COPY --from=backend-builder /out/zzz /zzz
 
-FROM alpine:3.24.1 AS runtime
+FROM alpine:3.24.2 AS runtime
 ARG VERSION=dev
 ARG VCS_REF=unknown
 ARG BUILD_DATE
